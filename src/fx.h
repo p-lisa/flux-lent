@@ -56,224 +56,70 @@ public:
         }
     }
 
-    // static void gravity(uint16_t* img, int width = 128, int height = 128) {
-
-    //     for (int y = 1; y < height - 1; y++) {
-    //         for (int x = 1; x < width - 1; x++) {
-
-    //             // convert 2D coordinates into 1D array index
-    //             int idx = y * width + x;
-    //             uint16_t c = img[idx];
-
-    //             uint8_t r = (c >> 11) & 0x1F;
-    //             uint8_t g = (c >> 5)  & 0x3F;
-    //             uint8_t b = c & 0x1F;
-
-    //             int brightness = r + g + b;
-
-    //             int darkestIdx = idx;
-    //             int darkestBrightness = brightness;
-
-    //             // check left
-    //             int leftIdx = idx - 1;
-    //             uint16_t cl = img[leftIdx]; // neighbour color
-    //             int bl = // neighbour brightness
-    //                 ((cl >> 11) & 0x1F) +
-    //                 ((cl >> 5)  & 0x3F) +
-    //                 (cl & 0x1F);
-
-    //             if (bl < darkestBrightness) {  // if left neighbor darker, remember it
-    //                 darkestBrightness = bl;
-    //                 darkestIdx = leftIdx;
-    //             }
-
-    //             // check right
-    //             int rightIdx = idx + 1;
-    //             uint16_t cr = img[rightIdx];
-    //             int br =
-    //                 ((cr >> 11) & 0x1F) +
-    //                 ((cr >> 5)  & 0x3F) +
-    //                 (cr & 0x1F);
-
-    //             if (br < darkestBrightness) {
-    //                 darkestBrightness = br;
-    //                 darkestIdx = rightIdx;
-    //             }
-
-    //             // check up
-    //             int upIdx = idx - width;
-    //             uint16_t cu = img[upIdx];
-    //             int bu =
-    //                 ((cu >> 11) & 0x1F) +
-    //                 ((cu >> 5)  & 0x3F) +
-    //                 (cu & 0x1F);
-
-    //             if (bu < darkestBrightness) {
-    //                 darkestBrightness = bu;
-    //                 darkestIdx = upIdx;
-    //             }
-
-    //             // check down
-    //             int downIdx = idx + width;
-    //             uint16_t cd = img[downIdx];
-    //             int bd =
-    //                 ((cd >> 11) & 0x1F) +
-    //                 ((cd >> 5)  & 0x3F) +
-    //                 (cd & 0x1F);
-
-    //             if (bd < darkestBrightness) {
-    //                 darkestBrightness = bd;
-    //                 darkestIdx = downIdx;
-    //             }
-
-    //             // move pixel one step
-    //             if (darkestIdx != idx) {
-    //                 uint16_t temp = img[idx];
-    //                 img[idx] = img[darkestIdx];
-    //                 img[darkestIdx] = temp;
-    //             }
-    //         }
-    //     }
-    // }
-
-    static int brightness565(uint16_t c) {
-        uint8_t r = (c >> 11) & 0x1F;
-        uint8_t g = (c >> 5)  & 0x3F;
-        uint8_t b = c & 0x1F;
-
-        return r + g + b;
-    }
-
-    // static void gravity(uint16_t* img,
-    //                     uint16_t* src,
-    //                     bool* moved,
-    //                     int width,
-    //                     int height) {
-
-    //     int count = width * height;
-
-    //     for (int i = 0; i < count; i++) {
-    //         src[i] = img[i];
-    //         moved[i] = false;
-    //     }
-
-    //     for (int y = 1; y < height - 1; y++) {
-    //         for (int x = 1; x < width - 1; x++) {
-
-    //             int idx = y * width + x;
-
-    //             if (moved[idx]) continue;
-
-    //             uint16_t c = src[idx];
-    //             int currentBrightness = brightness565(c);
-
-    //             int darkestIdx = idx;
-    //             int darkestBrightness = currentBrightness;
-
-    //             int neighbors[4] = {
-    //                 idx - 1,
-    //                 idx + 1,
-    //                 idx - width,
-    //                 idx + width
-    //             };
-
-    //             for (int n = 0; n < 4; n++) {
-    //                 int ni = neighbors[n];
-
-    //                 if (moved[ni]) continue;
-
-    //                 int b = brightness565(src[ni]);
-
-    //                 if (b < darkestBrightness) {
-    //                     darkestBrightness = b;
-    //                     darkestIdx = ni;
-    //                 }
-    //             }
-
-    //             if (darkestIdx != idx) {
-    //                 img[darkestIdx] = src[idx];
-    //                 img[idx] = src[darkestIdx];
-
-    //                 moved[idx] = true;
-    //                 moved[darkestIdx] = true;
-    //             }
-    //         }
-    //     }
-    // }
-
     static void gravitySmoke(uint16_t* img,
-                            uint16_t* src,
-                            bool* moved,
-                            int width = 128,
-                            int height = 128,
-                            int smokeThreshold = 90, // btw 0 and 125
-                            int moveChance = 70) { // percent, for randomness
+                             uint16_t* src,
+                             bool* moved,
+                             int width = 128,
+                             int height = 128,
+                             int smokeThreshold = 90, // brightness 0-125
+                             int moveChance = 70, // percent, for randomness
+                             int gravityMode = 0, // 0 Neighbours or 1 Directional
+                             int searchRadius = 3) {
 
         int count = width * height;
 
-        // copy current frame into source buffer
-        // we read from src and write into img
-        // this avoids scanline artefacts
+        // copy frame to src buffer > avoid artefact > we read in src and write in img              
         for (int i = 0; i < count; i++) {
             src[i] = img[i];
-            // reset movement tracking
-            moved[i] = false;
+            moved[i] = false; // reset
         }
 
-        for (int y = 1; y < height - 1; y++) {
-            for (int x = 1; x < width - 1; x++) {
+        int border = (gravityMode == 0) ? 1 : searchRadius;
+
+        for (int y = border; y < height - border; y++) {
+            for (int x = border; x < width - border; x++) {
 
                 int idx = y * width + x;
 
                 // skip pixels if already swapped
                 if (moved[idx]) continue;
 
-                // randomness: chance to not move this pixel
+                // randomness: to not move this round
                 if (random(100) >= moveChance) continue;
 
                 uint16_t c = src[idx];
-                int b = brightness565(c); // get brightness of current pixel
+                int b = brightness565(c); // get brightness of current pix
 
                 // default: stay in place
                 int targetIdx = idx;
 
                 // smoke behaviour
-                // smokeTreshold is a treshold of brightness, from 0 to 125
+                // smokeThreshold is brightness 0-125
                 if (b > smokeThreshold) {
-                    int dir = random(3) - 1; // -1, 0, +1
+                    int dir = random(3) - 1; // -1, 0, +1, randomness: dir
                     targetIdx = (y - 1) * width + (x + dir);
                 } else {
-                    // gravity behaviour
-                    int neighbors[4] = {
-                        idx - 1, // left
-                        idx + 1, // right
-                        idx - width, // up
-                        idx + width // down
-                    };
 
-                    // randomness: neighbour checking order
-                    int start = random(4);
-
-                    // default: stay in place
-                    int darkestIdx = idx;
-                    int darkestBrightness = b;
-
-                    // inspect neighbours
-                    for (int k = 0; k < 4; k++) {
-                        int ni = neighbors[(start + k) % 4];
-
-                        if (moved[ni]) continue; // skip if already moved pixels
-
-                        int nb = brightness565(src[ni]);
-
-                        // randomness: sometimes accept almost-darker neighbors too
-                        if (nb < darkestBrightness || random(100) < 10) {
-                            darkestBrightness = nb;
-                            darkestIdx = ni;
-                        }
+                    if (gravityMode == 0) {
+                        targetIdx = gravityNeighbours(
+                            src,
+                            moved,
+                            idx,
+                            width,
+                            b
+                        );
+                    } else {
+                        targetIdx = gravityDirectional(
+                            src,
+                            moved,
+                            x,
+                            y,
+                            idx,
+                            width,
+                            b,
+                            searchRadius
+                        );
                     }
-
-                    targetIdx = darkestIdx;
                 }
 
                 if (targetIdx != idx && !moved[targetIdx]) {
@@ -285,5 +131,128 @@ public:
                 }
             }
         }
+    }
+
+private:
+
+    static int brightness565(uint16_t c) {
+        uint8_t r = (c >> 11) & 0x1F;
+        uint8_t g = (c >> 5)  & 0x3F;
+        uint8_t b = c & 0x1F;
+
+        return r + g + b;
+    }
+
+    static int gravityNeighbours(uint16_t* src,
+                              bool* moved,
+                              int idx,
+                              int width,
+                              int b) {
+
+        // gravity behaviour
+        int neighbors[4] = {
+            idx - 1, // left
+            idx + 1, // right
+            idx - width, // up
+            idx + width // down
+        };
+
+        // randomness: neighbour checking order
+        int start = random(4);
+
+        // default: stay in place
+        int darkestIdx = idx;
+        int darkestBrightness = b;
+
+        // inspect neighbours
+        for (int k = 0; k < 4; k++) {
+
+            int ni = neighbors[(start + k) % 4];
+
+            if (moved[ni]) continue; // skip if already moved pixls
+
+            int nb = brightness565(src[ni]);
+
+            // randomness: sometimes accept almost darkest neighbors too
+            if (nb < darkestBrightness || random(100) < 10) {
+                darkestBrightness = nb;
+                darkestIdx = ni;
+            }
+        }
+
+        return darkestIdx;
+    }
+
+    static int gravityDirectional(uint16_t* src,
+                                  bool* moved,
+                                  int x,
+                                  int y,
+                                  int idx,
+                                  int width,
+                                  int b,
+                                  int searchRadius) {
+
+        // gravity behaviour
+        // inspect 8 directions
+        int directions[8][2] = {
+            {-1,  0}, // left
+            { 1,  0}, // right
+            { 0, -1}, // up
+            { 0,  1}, // down
+            {-1, -1}, // up-left
+            { 1, -1}, // up-right
+            {-1,  1}, // down-left
+            { 1,  1}  // down-right
+        };
+
+        // randomness: direction checking order
+        int start = random(8);
+
+        // default: stay in place
+        int darkestIdx = idx;
+        int darkestBrightness = b;
+
+        // inspect directions
+        for (int k = 0; k < 8; k++) {
+
+            int d = (start + k) % 8;
+
+            int dirX = directions[d][0];
+            int dirY = directions[d][1];
+
+            int totalBrightness = 0;
+            int samples = 0;
+
+            // inspect pix a bit further in that dir
+            for (int step = 1; step <= searchRadius; step++) {
+
+                int nx = x + dirX * step;
+                int ny = y + dirY * step;
+
+                int ni = ny * width + nx;
+
+                if (moved[ni]) continue; // skip if already moved
+
+                int nb = brightness565(src[ni]);
+
+                totalBrightness += nb;
+                samples++;
+            }
+
+            if (samples == 0) continue;
+
+            int averageBrightness = totalBrightness / samples;
+
+            // randomness: sometimes accept almost darkest dirs too
+            if (averageBrightness < darkestBrightness || random(100) < 10) {
+
+                darkestBrightness = averageBrightness;
+
+                // move only one pixel in the chosen direction (TODO as arg?)
+                darkestIdx = (y + dirY) * width + (x + dirX);
+            }
+        }
+
+        return darkestIdx;
     }
 };
